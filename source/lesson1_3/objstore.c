@@ -750,6 +750,7 @@ void testWriteRange(ObjStoreContext* pContext, uint16_t maxid, uint16_t mask,int
 	free(pdata);
 }
 
+
 void testReadRange(ObjStoreContext* pContext, uint16_t maxid, uint16_t mask, int startpos, int len)
 {
 	uint32_t* pdata = (uint32_t*)malloc(len + 16);//作业，这是一次性能相关的权衡->解决方案：ReadFileContent要加一个带seek的实现
@@ -815,11 +816,41 @@ void testCheck(ObjStoreContext* pContext, uint16_t maxid, size_t datasize)
 	free(pdata);
 }
 
+void testCheckRange(ObjStoreContext* pContext, uint16_t maxid, int mask,int startpos, int len)
+{
+	uint32_t* pdata = (uint32_t*)malloc(len + 16);
+	for (int i = 0; i < maxid; ++i)
+	{
+		uint64_t readlen = len;
+		if (ReadObjDataByRange(pContext, i, startpos, pdata, &readlen) != 0)
+		{
+			printf("obj %d test failed.readlen error\n", i);
+			continue;
+		}
+
+		if (readlen == len)
+		{
+			for (uint32_t j = 0; j < len / 4; ++j)
+			{
+				if (j > 0)
+				{
+					if (pdata[j] != (((uint32_t)mask << 16) | i))
+					{
+						printf("obj %d check failed. %d byte error. %x\n", i, j, pdata[j]);
+						break;
+					}
+				}
+			}
+			printf("obj %d check ok.\n", i);
+		}
+	}
+	free(pdata);
+}
 
 int devtest()
 {
 	ObjStoreContext* pContext = (ObjStoreContext*)malloc(sizeof(ObjStoreContext));
-	InitObjStore(pContext, "/tmp/objstore/");
+	InitObjStore(pContext, "d:/tmp/objstore/");
 	uint8_t buffer[256];
 	uint64_t bufferlen = 256;
 	UpdateObjData(pContext, 100, "123456", 6);
@@ -841,9 +872,12 @@ int devtest()
 void usage()
 {
 	printf("usage:\n");
-	printf("\t-w maxobjid mask datasize\n");
+	printf("\t-w maxobjid mask datasize \n");
 	printf("\t-r maxobjid mask datasize\n");
 	printf("\t-c maxobjid datasize\n");
+	printf("\t-wp maxobjid mask startpos datasize\n");
+	printf("\t-rp maxobjid mask startpos datasize\n");
+	printf("\t-cp maxobjid mask startpos datasize\n");
 	return;
 }
 
@@ -883,6 +917,7 @@ int main(int argc, char** argv)
 				printf("start read...\n");
 				testRead(pContext, maxobjid, mask, datasize);
 			}
+
 			else
 			{
 				usage();
@@ -902,6 +937,30 @@ int main(int argc, char** argv)
 			{
 				usage();
 				return 1;
+			}
+		}
+		else if (argc == 6)
+		{
+			int maxobjid = atoi(argv[2]);
+			int mask = atoi(argv[3]);
+			int startpos = atoi(argv[4]);
+			int datasize = atoi(argv[5]);
+
+
+			if (strcmp(argv[1], "-wp") == 0)
+			{
+				printf("start write range ...\n");
+				testWriteRange(pContext, maxobjid, mask, startpos, datasize);
+			}
+			else if (strcmp(argv[1], "-rp") == 0)
+			{
+				printf("start read range ... \n");
+				testReadRange(pContext, maxobjid, mask, startpos, datasize);
+			}
+			else if (strcmp(argv[1], "-cp") == 0)
+			{
+				printf("start check range ... \n");
+				testCheckRange(pContext, maxobjid, mask,startpos, datasize);
 			}
 		}
 		else

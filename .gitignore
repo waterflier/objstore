@@ -45,3 +45,7 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+source/Debug/lesson1_3.exe
+*.sdf
+source/Debug/lesson1_3.ilk
+*.pdb
